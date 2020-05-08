@@ -1,0 +1,34 @@
+# Using Hadoop to run the python file, run the following codes in terminal:
+# python TopMovies.py -r hadoop --hadoop-streaming-jar /usr/hdp/current/hadoop-mapreduce-client/hadoop-streaming.jar u.data
+
+
+# Python file codes:
+from mrjob.job import MRJob
+from mrjob.step import MRStep
+class TopMovies(MRJob):
+#MRJob in parentheses means that the class RatingBreakdown inherits from MRJob class in mrjob package
+# Define 2 steps for mapreduce processes:
+    def steps(self):
+        return [
+            MRStep(mapper=self.mapper_get_ratings,
+                  reducer=self.reducer_count_ratings),
+            MRStep(reducer=self.reducer_sorted_output)
+        ]
+
+    def mapper_get_ratings(self, _, line):
+        (userID, movieID, rating, timestamp) = line.split('\t')
+        yield movieID, 1
+
+    def reducer_count_ratings(self, key, values):
+        yield str(sum(values)).zfill(5), key
+
+# Before Hadoop goes into the second reducer, it goes through the shuffle and sort phase:
+    def reducer_sorted_output(self,count,movies):
+        for movie in movies:
+            yield movie,count
+
+'''allow kicking off the job as a whole and also kicking off individual
+mappers and reducers on the individual nodes on your cluster'''
+
+if __name__ == '__main__':
+    TopMovies.run()
